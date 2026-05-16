@@ -1,0 +1,20 @@
+appId: com.douyin.vedio
+productName: 古诗词视频工坊
+directories:
+  output: release
+files:
+  - dist/**/*
+  - resources/**/*
+  - scripts/**/*
+extraResources:
+  - from: .env
+    to: .env
+  - from: assets
+    to: assets
+win:
+  target: nsis
+  icon: resources/icon.png
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+asar: true
