@@ -42,12 +42,7 @@ async function chatCompletion(systemPrompt: string, userMessage: string): Promis
   }
 }
 
-function splitPoemLines(content: string): string[] {
-  return content
-    .split(/\n+/)
-    .map(s => s.replace(/[，。、；：？！""''（）《》\s]/g, '').trim())
-    .filter(s => s.length >= 4)
-}
+import { splitPoemLines } from '../../shared/utils'
 
 // ====== 步骤2: 按诗句拆分生成N句场景描绘 ======
 

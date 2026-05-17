@@ -55,8 +55,8 @@ export const IPC_CHANNELS = {
   GENERATE_CHARACTER: 'doubao:generate-character',
   // 豆包 — 提示词
   GENERATE_PROMPTS_FROM_SCENES: 'doubao:generate-prompts-from-scenes',
-  // 即梦 — 视频
-  GENERATE_LONG_VIDEO: 'jimeng:generate-long-video',
+  // 视频生成（可灵 Kling v3，多镜一次提交）
+  GENERATE_LONG_VIDEO: 'video:generate',
   CANCEL_GENERATION: 'video:cancel-generation',
   QUERY_VIDEO_STATUS: 'jimeng:query-status',
   DOWNLOAD_VIDEO: 'jimeng:download-video',

@@ -8,12 +8,7 @@ import type { Poem } from '../../shared/types'
 
 type Step = 1 | 2 | 3 | 4 | 5
 
-function splitPoemLines(content: string): string[] {
-  return content
-    .split(/\n+/)
-    .map(s => s.replace(/[，。、；：？！""''（）《》\s]/g, '').trim())
-    .filter(s => s.length >= 4)
-}
+import { splitPoemLines } from '../../shared/utils'
 
 export default function CreatePage() {
   const [currentStep, setCurrentStep] = useState<Step>(1)
@@ -137,9 +132,10 @@ export default function CreatePage() {
       )}
 
       {/* 步骤4: 视频生成 */}
-      {currentStep === 4 && shotPrompts.length > 0 && (
+      {currentStep === 4 && shotPrompts.length > 0 && selectedPoem && (
         <VideoPreview
           shotPrompts={shotPrompts}
+          subtitles={splitPoemLines(selectedPoem.content)}
           onSave={handleSave}
           onDiscard={handleDiscard}
           onBack={() => setCurrentStep(3)}

@@ -1,13 +1,15 @@
+import { app } from 'electron'
 import initSqlJs, { type Database } from 'sql.js'
 import path from 'path'
 import fs from 'fs'
 
 let db: Database | null = null
 let dbInitPromise: Promise<Database> | null = null
+let writeLock = false
 
 function getDbPath(): string {
-  const userDataPath = process.env.APPDATA || process.env.HOME || __dirname
-  return path.join(userDataPath, 'douyin-vedio', 'data.db')
+  const userDataPath = app.getPath('userData')
+  return path.join(userDataPath, 'data.db')
 }
 
 export function getDatabase(): Promise<Database> {
@@ -61,7 +63,8 @@ export function getDatabase(): Promise<Database> {
 }
 
 export function saveDatabase() {
-  if (!db) return
+  if (!db || writeLock) return
+  writeLock = true
   try {
     const dbPath = getDbPath()
     const data = db.export()
@@ -69,6 +72,8 @@ export function saveDatabase() {
     fs.writeFileSync(dbPath, buffer)
   } catch (err) {
     console.error('saveDatabase 失败:', err)
+  } finally {
+    writeLock = false
   }
 }
 
@@ -95,7 +100,6 @@ export function isPoemUsed(poemId: string): boolean {
 export function markPoemUsed(poemId: string) {
   if (!db) return
   db.run('INSERT OR IGNORE INTO used_poems (poem_id) VALUES (?)', [poemId])
-  saveDatabase()
 }
 
 export function getUsedPoemIds(): string[] {
@@ -108,5 +112,4 @@ export function getUsedPoemIds(): string[] {
 export function resetUsedPoems() {
   if (!db) return
   db.run('DELETE FROM used_poems')
-  saveDatabase()
 }

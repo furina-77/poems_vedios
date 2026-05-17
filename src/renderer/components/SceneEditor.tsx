@@ -8,12 +8,7 @@ interface Props {
   onBack: () => void
 }
 
-function splitPoemLines(content: string): string[] {
-  return content
-    .split(/\n+/)
-    .map(s => s.replace(/[，。、；：？！""''（）《》\s]/g, '').trim())
-    .filter(s => s.length >= 4)
-}
+import { splitPoemLines } from '../../shared/utils'
 
 export default function SceneEditor({ poem, initialScenes, onConfirm, onBack }: Props) {
   const lines = splitPoemLines(poem.content)

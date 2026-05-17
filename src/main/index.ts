@@ -4,7 +4,8 @@ import { config } from 'dotenv'
 import { getDatabase, saveDatabase } from './database'
 import { getRandomPoems, confirmPoemSelection } from './services/poetry-service'
 import type { GenerationProgress } from '../shared/types'
-import { existsSync } from 'fs'
+import { existsSync, statSync, createReadStream } from 'fs'
+import { Readable } from 'stream'
 
 const envPaths = [
   path.join(__dirname, '../../.env'),
@@ -65,27 +66,29 @@ app.whenReady().then(() => {
     try {
       const url = new URL(request.url)
       const filePath = decodeURIComponent(url.pathname).slice(1)
-      const { statSync, createReadStream } = require('fs')
-      const { Readable } = require('stream')
-
       const resolved = path.resolve(filePath)
       const tempDir = path.resolve(app.getPath('temp'))
-      const videosDir = path.resolve(app.getPath('videos'))
+      // 白名单：临时目录、系统视频目录、用户自定义保存目录
+      const userVideosDir = path.resolve(app.getPath('videos'), '古诗词视频工坊')
       const saveDir = process.env.VIDEO_SAVE_PATH ? path.resolve(process.env.VIDEO_SAVE_PATH) : ''
-      if (!resolved.startsWith(tempDir) && !resolved.startsWith(videosDir) && (!saveDir || !resolved.startsWith(saveDir))) {
+      const allowed = resolved.startsWith(tempDir)
+        || resolved.startsWith(userVideosDir)
+        || (!!saveDir && resolved.startsWith(saveDir))
+      if (!allowed) {
         return new Response('Forbidden', { status: 403 })
       }
 
-      if (!existsSync(filePath)) {
+      // 所有文件操作统一使用 resolved，防止路径穿越
+      if (!existsSync(resolved)) {
         return new Response('File not found', { status: 404 })
       }
 
-      const stat = statSync(filePath)
+      const stat = statSync(resolved)
       const fileSize = stat.size
       const rangeHeader = request.headers.get('range')
 
       if (!rangeHeader) {
-        const stream = createReadStream(filePath)
+        const stream = createReadStream(resolved)
         const webStream = Readable.toWeb(stream)
         return new Response(webStream, {
           status: 200,
@@ -113,7 +116,7 @@ app.whenReady().then(() => {
       }
 
       const chunkSize = end - start + 1
-      const stream = createReadStream(filePath, { start, end })
+      const stream = createReadStream(resolved, { start, end })
       const webStream = Readable.toWeb(stream)
 
       return new Response(webStream, {
@@ -153,6 +156,15 @@ app.on('activate', () => {
 const generationCancelFlags = new Map<string, boolean>()
 
 // ====== IPC 通道注册 ======
+//
+// 通道命名与实际实现映射：
+//   poetry:*             → poetry-service.ts
+//   doubao:generate-*    → doubao-api.ts（豆包文本/场景/角色/提示词）
+//   jimeng:query-status  → jimeng-api.ts（即梦任务查询）
+//   jimeng:download-video→ jimeng-api.ts（即梦视频下载）
+//   video:generate       → kling-api.ts（可灵 Kling v3 多镜生成）
+//   video:*              → video-service.ts
+//   image-video:*        → image-video-service.ts（备用，文生图+FFmpeg 方案）
 
 // 获取随机诗词
 ipcMain.handle('poetry:fetch-random', (_event, count: number = 4) => {
@@ -218,9 +230,11 @@ ipcMain.handle('jimeng:query-status', async (_event, taskId: string) => {
   }
 })
 
-// 步骤4: 即梦 - 逐镜生成视频（带进度推送和取消支持）
-ipcMain.handle('jimeng:generate-long-video', async (event, shotPrompts: string[]) => {
-  const { generateLongVideo } = await import('./services/jimeng-api')
+// 步骤4: 可灵 Kling v3 逐镜生成 + 字幕 + FFmpeg 拼接
+ipcMain.handle('video:generate', async (event, params: { shotPrompts: string[]; subtitles: string[] }) => {
+  const { generateClips } = await import('./services/kling-api')
+
+  const perShotSec = 5
   const cancelKey = `gen_${Date.now()}`
   generationCancelFlags.set(cancelKey, false)
 
@@ -233,8 +247,8 @@ ipcMain.handle('jimeng:generate-long-video', async (event, shotPrompts: string[]
   const isCancelled = () => generationCancelFlags.get(cancelKey) === true
 
   try {
-    const mergedPath = await generateLongVideo(shotPrompts, onProgress, isCancelled)
-    return { success: true, data: { filePath: mergedPath } }
+    const filePath = await generateClips(params.shotPrompts, params.subtitles, perShotSec, onProgress, isCancelled)
+    return { success: true, data: { filePath } }
   } catch (err: any) {
     if (err.message === 'CANCELLED') {
       return { success: false, error: '已取消生成' }

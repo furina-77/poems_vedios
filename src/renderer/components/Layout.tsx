@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useState, useEffect, type ReactNode } from 'react'
 
 type PageKey = 'create' | 'library'
 
@@ -14,6 +14,12 @@ const NAV_ITEMS: { key: PageKey; label: string }[] = [
 ]
 
 export default function Layout({ currentPage, onNavigate, children }: Props) {
+  const [version, setVersion] = useState('')
+
+  useEffect(() => {
+    window.electronAPI.getVersion().then(setVersion)
+  }, [])
+
   return (
     <div className="app-shell">
       <header className="app-header">
@@ -36,7 +42,7 @@ export default function Layout({ currentPage, onNavigate, children }: Props) {
       </div>
 
       <footer className="app-footer">
-        <span>古诗词视频工坊 v1.0.0</span>
+        <span>古诗词视频工坊{version ? ` v${version}` : ''}</span>
       </footer>
     </div>
   )

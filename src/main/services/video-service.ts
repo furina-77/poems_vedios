@@ -75,7 +75,9 @@ export async function getAllVideos(): Promise<VideoRecord[]> {
 
 export async function searchVideos(keyword: string): Promise<VideoRecord[]> {
   const db = await getDatabase()
-  const like = `%${keyword}%`
+  // 转义 SQL LIKE 通配符，防止用户输入 % 或 _ 导致匹配异常
+  const escaped = keyword.replace(/[%_]/g, '\\$&')
+  const like = `%${escaped}%`
   const stmt = db.prepare(
     `SELECT * FROM saved_videos
      WHERE poem_title LIKE ? OR poem_author LIKE ? OR poem_content LIKE ? OR scene_description LIKE ?
@@ -118,8 +120,10 @@ export async function rescanFolder(): Promise<{ added: number; total: number }> 
   const files = fs.readdirSync(saveDir).filter(f => f.endsWith('.mp4'))
   let added = 0
 
+  const resolvedSaveDir = path.resolve(saveDir)
   for (const file of files) {
     const filePath = path.join(saveDir, file)
+    if (!path.resolve(filePath).startsWith(resolvedSaveDir)) continue
     if (existing.has(filePath.toLowerCase())) continue
 
     try {

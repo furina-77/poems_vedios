@@ -31,11 +31,11 @@ export interface ElectronAPI {
   // 步骤3: 提示词生成（基于场景描述）
   generatePromptsFromScenes: (params: { character: string; scenes: string[]; poemTitle: string }) => Promise<ApiResult<string[]>>
   // 步骤4: 视频生成（带进度推送和取消）
-  generateLongVideo: (shotPrompts: string[]) => Promise<ApiResult<DownloadResult>>
+  generateLongVideo: (params: { shotPrompts: string[]; subtitles: string[] }) => Promise<ApiResult<DownloadResult>>
   cancelGeneration: () => Promise<ApiResult>
   onGenerationProgress: (callback: (progress: GenerationProgress) => void) => () => void
   // 视频管理
-  saveVideo: (params: { tempPath: string; poem: any; scene: string; prompt: any }) => Promise<ApiResult<SaveResult>>
+  saveVideo: (params: { tempPath: string; poem: { id: string; title: string; author: string; content: string }; scene: string; prompt: Record<string, string> }) => Promise<ApiResult<SaveResult>>
   getAllVideos: () => Promise<ApiResult<VideoRecord[]>>
   searchVideos: (keyword: string) => Promise<ApiResult<VideoRecord[]>>
   deleteVideo: (id: number) => Promise<ApiResult>
@@ -49,7 +49,7 @@ const electronAPI: ElectronAPI = {
   generateMultiScenes: (poem) => ipcRenderer.invoke('doubao:generate-multi-scenes', poem),
   generateCharacter: (params) => ipcRenderer.invoke('doubao:generate-character', params),
   generatePromptsFromScenes: (params) => ipcRenderer.invoke('doubao:generate-prompts-from-scenes', params),
-  generateLongVideo: (shotPrompts) => ipcRenderer.invoke('jimeng:generate-long-video', shotPrompts),
+  generateLongVideo: (params) => ipcRenderer.invoke('video:generate', params),
   cancelGeneration: () => ipcRenderer.invoke('video:cancel-generation'),
   onGenerationProgress: (callback: (progress: GenerationProgress) => void) => {
     const handler = (_event: Electron.IpcRendererEvent, progress: GenerationProgress) => callback(progress)
